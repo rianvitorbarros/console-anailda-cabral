@@ -1,0 +1,170 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Custom claims check would be ideal for production.
+    // Right now, any authenticated user acts as an admin in this prototype console.
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // Products
+    match /products/{productId} {
+      allow get: if (
+        resource != null &&
+        resource.data.projectId == 'anailda-book' &&
+        resource.data.status == 'active'
+      ) || isAdmin();
+
+      allow list: if (
+        resource != null &&
+        resource.data.projectId == 'anailda-book' &&
+        resource.data.status == 'active'
+      ) || isAdmin();
+
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /projects/{projectId} {
+      
+      // Public Checkout Status
+      match /publicCheckoutStatus/{statusToken} {
+        allow get: if projectId == 'anailda-book'
+                   && resource.data.projectId == 'anailda-book'
+                   && resource.data.expiresAt > request.time;
+        allow list: if false;
+        allow create, update, delete: if isAdmin();
+      }
+
+      // Sessions
+      match /sessions/{sessionId} {
+        allow read: if isAdmin();
+        // Public can create/update sessions but not read them.
+        allow create, update: if projectId == 'anailda-book';
+      }
+      
+      // Analytics Events
+      match /analyticsEvents/{eventId} {
+        allow read: if isAdmin();
+
+        allow create: if projectId == 'anailda-book'
+                      && request.resource.data.keys().hasAll([
+                        'eventName',
+                        'createdAt'
+                      ])
+                      && request.resource.data.eventName is string
+                      && request.resource.data.createdAt is timestamp
+                      && (
+                        (
+                          request.resource.data.keys().hasAny(['sessionId'])
+                          && request.resource.data.sessionId is string
+                        )
+                        ||
+                        (
+                          request.resource.data.keys().hasAny(['visitorId'])
+                          && request.resource.data.visitorId is string
+                        )
+                      )
+                      && (
+                        !request.resource.data.keys().hasAny(['metadata'])
+                        ||
+                        (
+                          request.resource.data.metadata is map
+                          && (
+                            !request.resource.data.metadata.keys().hasAny(['debug'])
+                            || request.resource.data.metadata.debug != true
+                          )
+                        )
+                      );
+
+        allow update, delete: if false;
+      }
+      
+      // Orders
+      match /orders/{orderId} {
+        // Only admin can read orders (no public read)
+        allow read: if isAdmin();
+        
+        // Public can create pending orders only
+        allow create: if projectId == 'anailda-book'
+                      && request.resource.data.amount is number
+                      && request.resource.data.amount > 0
+                      && request.resource.data.currency == 'BRL'
+                      && request.resource.data.paymentStatus == 'pending'
+                      && (request.resource.data.status == 'created' || request.resource.data.status == 'pending')
+                      && (
+                        request.resource.data.keys().hasAny(['productId']) ||
+                        request.resource.data.keys().hasAny(['items'])
+                      );
+        
+        allow update, delete: if isAdmin();
+      }
+      
+      // Order Events
+      match /orderEvents/{eventId} {
+        allow read: if isAdmin();
+        
+        allow create: if isAdmin() || (
+                        projectId == 'anailda-book'
+                        && request.resource.data.status != 'paid' 
+                        && request.resource.data.status != 'approved'
+                        // block eventName payment approvals from public
+                        && request.resource.data.eventName != 'payment_approved'
+                        && request.resource.data.eventName != 'paid'
+                        && request.resource.data.eventName != 'order_paid'
+                      );
+        
+        allow update, delete: if isAdmin();
+      }
+      
+      // Integrations
+      match /integrations/{integrationId} {
+        allow read, write: if isAdmin();
+      }
+      
+      // Settings
+      match /settings/{settingId} {
+        allow read, write: if isAdmin();
+      }
+      
+      // Integration Secrets (both names just to be safe during migration)
+      match /integration_secrets/{integrationId} {
+        allow read: if false; // NEVER read by frontend
+        allow write: if isAdmin();
+      }
+      
+      match /integrations_secrets/{integrationId} {
+        allow read: if false; // NEVER read by frontend
+        allow write: if isAdmin();
+      }
+    }
+
+    match /users/{userId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /usernames/{username} {
+      allow read, write: if isAdmin();
+    }
+
+    match /pushTokens/{tokenId} {
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.projectId == "anailda-book"
+        && request.resource.data.role in ["admin", "publisher_operator"];
+
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+
+      allow get: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+
+      allow list: if isAdmin();
+
+      allow delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+    }
+  }
+}

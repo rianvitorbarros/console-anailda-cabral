@@ -1,0 +1,12 @@
+--- functions/tsconfig.json
++++ functions/tsconfig.json
+@@ -5,7 +5,8 @@
+     "moduleResolution": "node",
+     "target": "es2022",
+     "sourceMap": true,
+-    "outDir": "lib"
++    "outDir": "lib",
++    "noImplicitAny": false
+   },
+   "compileOnSave": true,
+   "include": [

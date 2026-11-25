@@ -1,0 +1,8 @@
+{
+  "name": "Cabral Hub",
+  "description": "Central de produtos, vendas, pedidos e entregas da Anailda Cabral.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

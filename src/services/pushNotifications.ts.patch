@@ -1,0 +1,91 @@
+--- src/services/pushNotifications.ts
++++ src/services/pushNotifications.ts
+@@ -1,5 +1,5 @@
+-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
++import { getMessaging, getToken, onMessage, deleteToken } from 'firebase/messaging';
+-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
++import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+@@ -29,6 +29,14 @@
+ 
++const getLocalDeviceId = () => {
++  let deviceId = localStorage.getItem('cabral_device_id');
++  if (!deviceId) {
++    deviceId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
++    localStorage.setItem('cabral_device_id', deviceId);
++  }
++  return deviceId;
++};
++
+@@ -40,3 +48,4 @@
+     if (token) {
+-      await savePushToken(token, user, role);
++      await savePushToken(token, user, role, 'granted');
+       return token;
+@@ -48,3 +57,3 @@
+ 
+-const savePushToken = async (token: string, user: User, role?: string) => {
++export const savePushToken = async (token: string, user: User, role?: string, permission: string = 'granted') => {
+   const tokenRef = doc(db, 'pushTokens', token);
+@@ -58,6 +67,8 @@
+     platform: navigator.platform,
+     source: isRunningAsPWA() ? 'pwa' : 'browser',
+-    permission: 'granted',
++    permission,
++    deviceId: getLocalDeviceId(),
+     lastSeenAt: serverTimestamp()
+   };
+ 
++  if (!data.createdAt) {
++     // To avoid overwriting createdAt, we let merge handle it. But serverTimestamp() is fine.
++     // Actually, let's just add createdAt: serverTimestamp() if it's new. We can just always send it and Firestore merge won't delete it, but it might overwrite it if we provide it.
++     // Since merge: true, if we just provide updatedAt, it's fine.
++  }
++
+   // setDoc with merge to create or update
+@@ -66,2 +77,20 @@
+ };
+ 
++export const syncExistingPushToken = async (user: User, role?: string) => {
++  if (!isPushSupported()) return;
++  if (getPushPermissionStatus() !== 'granted') return;
++  
++  try {
++    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
++    const messaging = getMessaging(app);
++    const token = await getToken(messaging, {
++      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
++      serviceWorkerRegistration: registration,
++    });
++    if (token) {
++      await savePushToken(token, user, role, 'granted');
++    }
++  } catch (err) {
++    console.error('[push] Error syncing existing token', err);
++  }
++};
++
++export const disablePushNotifications = async (user: User) => {
++  if (!isPushSupported()) return;
++  try {
++    const registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
++    if (!registration) return;
++    
++    const messaging = getMessaging(app);
++    const token = await getToken(messaging, {
++      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
++      serviceWorkerRegistration: registration,
++    });
++    
++    if (token) {
++      const tokenRef = doc(db, 'pushTokens', token);
++      await updateDoc(tokenRef, {
++        active: false,
++        updatedAt: serverTimestamp(),
++        disabledReason: 'logout'
++      });
++      await deleteToken(messaging);
++    }
++  } catch (err) {
++    console.error('[push] Error disabling notifications', err);
++  }
++};

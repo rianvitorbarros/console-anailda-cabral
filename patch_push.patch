@@ -1,0 +1,31 @@
+--- functions/src/pushNotifications.ts
++++ functions/src/pushNotifications.ts
+@@ -37,21 +37,13 @@
+           const baseUrl = process.env.APP_URL || process.env.APP_BASE_URL || 'https://console-anailda.web.app'; // Fallback if not configured
+ 
+           const payload = {
+-            notification: {
+-              title: 'Novo pedido pago',
+-              body: `O pedido ${orderId} já foi pago e está aguardando envio.`,
+-            },
+             data: {
+               type: 'book_sale_paid',
++              title: 'Novo pedido pago',
++              body: 'Pagamento confirmado. Pedido aguardando envio.',
+               orderId: orderId,
+               projectId: projectId,
+               url: `/orders/${orderId}`,
+-            },
+-            webpush: {
+-              fcmOptions: {
+-                link: `${baseUrl}/orders/${orderId}`,
+-              },
+-              notification: {
+-                icon: `${baseUrl}/apple-touch-icon.png`,
+-                badge: `${baseUrl}/badge-72.png`,
+-                tag: `order-${orderId}`,
+-                renotify: true
+-              }
++              tag: `order-paid-${orderId}`
+             }
+           };

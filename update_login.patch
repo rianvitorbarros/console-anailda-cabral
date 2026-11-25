@@ -1,0 +1,37 @@
+--- src/pages/Login.tsx
++++ src/pages/Login.tsx
+@@ -2,7 +2,7 @@
+-import { signInWithEmailAndPassword } from "firebase/auth";
++import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+ import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+ import { auth, db } from "../firebase";
+ import { useNavigate } from "react-router";
+@@ -35,10 +35,26 @@
+       }
+ 
+-      await signInWithEmailAndPassword(auth, emailToLogin, password);
++      const userCred = await signInWithEmailAndPassword(auth, emailToLogin, password);
++      
++      const userDocRef = doc(db, 'users', userCred.user.uid);
++      const userDoc = await getDoc(userDocRef);
++      
++      let targetRoute = "/";
++      
++      if (userDoc.exists()) {
++        const userData = userDoc.data();
++        if (userData.active === false) {
++          await signOut(auth);
++          throw new Error('user-disabled');
++        }
++        if (userData.role === 'publisher_operator') {
++          targetRoute = "/orders";
++        }
++      }
+       
+       setSuccess(true);
+       setTimeout(() => {
+-        navigate("/");
++        navigate(targetRoute);
+       }, 700);
+       
+     } catch (err: any) {

@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "MercadoPagoSettings": {
+      "title": "MercadoPagoSettings",
+      "description": "Mercado Pago integration settings",
+      "type": "object",
+      "properties": {
+        "publicKey": { "type": "string" },
+        "environment": { "type": "string" },
+        "webhookUrl": { "type": "string" },
+        "status": { "type": "string" },
+        "accessTokenMasked": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}/integrations/mercadopago": {
+      "schema": { "$ref": "#/entities/MercadoPagoSettings" },
+      "description": "Stores the Mercado Pago integration settings for a project"
+    }
+  }
+}

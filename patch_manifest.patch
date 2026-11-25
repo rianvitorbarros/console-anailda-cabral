@@ -1,0 +1,11 @@
+--- public/manifest.json
++++ public/manifest.json
+@@ -2,7 +2,7 @@
+   "name": "Anailda Cabral - Lançamento do Livro",
+   "short_name": "Anailda Cabral",
+   "id": "/",
+-  "start_url": "/?source=pwa",
++  "start_url": "/?source=pwa&v=2",
+   "display": "standalone",
+   "background_color": "#D3265B",
+   "theme_color": "#D3265B",

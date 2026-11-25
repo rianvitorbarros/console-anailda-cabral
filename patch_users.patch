@@ -1,0 +1,10 @@
+--- src/pages/UsersManagement.tsx
++++ src/pages/UsersManagement.tsx
+@@ -219,6 +219,7 @@
+         uid: user.uid,
+         status: newStatus ? 'active' : 'inactive'
+       });
++      await setDoc(doc(db, 'users', user.uid), { active: newStatus }, { merge: true });
+       if (user.username) {
+         await setDoc(doc(db, 'usernames', user.username), { active: newStatus }, { merge: true });
+       }
